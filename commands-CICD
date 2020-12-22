@@ -1,0 +1,46 @@
+steps: 
+
+1.check docker status:
+systemctl status docker.service
+
+2. permission check:
+chmod 777 /var/run/docker.sock
+
+3. register gitlab-runner with docker executor(use URL and Token from:gitlab-> Settings -> CI/CD -> Runner Settings )
+
+gitlab-runner register -n \
+  --url http://git.toobatech.ir/ \
+  --registration-token 4Wsd7xzhZz8feHLzi1Eq \
+  --executor docker \
+  --description "docker-exec-php-redis-developer" \
+  --docker-image "192.168.100.81:8083/library/docker:19.03.1" \
+  --docker-volumes /var/run/docker.sock:/var/run/docker.sock
+
+
+4. create variables in gitlab -> Settings -> CI/CD -> Secret Variables
+
+KUBE_TOKEN : the token from gang site: http://gangway.toomix.ir/
+
+KUBE_URL: https://192.168.100.68:6443 
+
+KUBE_USER: demoapp@toobatech.ir
+
+kube_namespace : sample
+
+kube_configmap : redishost
+
+kube_php_deployment : php-apache
+
+kube_php_service : php-apache
+
+kube_php_ingress : php-apache-ingress
+
+kube_redis_deployment : redis
+
+kube_redis_service : redis
+
+kube_redis_port : 6379
+
+
+5. new commit on project to push .gitlab-ci.yml along with other files on gitlab
+

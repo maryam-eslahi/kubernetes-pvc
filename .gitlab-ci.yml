@@ -1,0 +1,70 @@
+stages:
+  - build
+  - deploy
+
+build:
+
+  stage: build
+  before_script:
+    - echo "before script"
+
+  script: 
+    - docker build -t php-apache-gke:latest -f Dockerfile-php .
+    - docker tag php-apache-gke:latest 192.168.100.81:8082/php-apache-gke:latest
+    - docker push 192.168.100.81:8082/php-apache-gke:latest
+    - docker build -t redis-local:latest -f Dockerfile-redis .
+    - docker tag redis-local:latest 192.168.100.81:8082/redis-local:latest
+    - docker push 192.168.100.81:8082/redis-local:latest
+ 
+deploy:
+
+  stage: deploy
+ 
+  image: 
+    name: 192.168.100.81:8083/bitnami/kubectl:1.17.1-ol-7-r3  
+    entrypoint: ["/bin/sh", "-c"]
+
+  before_script:
+    - echo "before script"
+    - echo ${KUBE_URL}
+    - echo ${KUBE_TOKEN}
+    - echo ${PWD}
+    - export HOME=${PWD}
+    - kubectl config set-cluster Kubernetes --server=${KUBE_URL}  --insecure-skip-tls-verify=true
+    - kubectl config set-credentials ${KUBE_USER} --auth-provider=oidc --auth-provider-arg='idp-issuer-url=https://auth.toomix.ir' --auth-provider-arg='client-id=login' --auth-provider-arg='client-secret=4TORGiNV9M54BTk1v7dNuFSaI6hUjfjr' --auth-provider-arg='refresh-token=Chl5eXl5c2ViaGZpcGtnZmQ0Mm53NHU3NzJrEhliZWFkZ3VmdWxwN2t1ZmhkaHF5eWo1cnl2' --auth-provider-arg='id-token='${KUBE_TOKEN} 
+    - kubectl config set-context Kubernetes --cluster=Kubernetes --user=${KUBE_USER}
+    - kubectl config use-context Kubernetes
+    - kubectl config set-context --current --namespace=${kube_namespace}
+    - kubectl config view
+
+
+  script: 
+
+    - echo "Inside deploy script"
+    - echo "delete old configmap"
+    - export CONFIGMAP=$(kubectl get configmap |grep ${kube_configmap} | wc -l)
+    - if [ ${CONFIGMAP} -ne 0 ]; then kubectl delete configmap ${kube_configmap}; fi
+    - kubectl create configmap ${kube_configmap} --from-literal=REDIS_HOST=${kube_redis_service} --from-literal=REDIS_PORT=${kube_redis_port}
+
+    - echo "delete old deployment and service for php"
+    - export PHPDEPLOYMENT=$(kubectl get deployments |grep ${kube_php_deployment} | wc -l)
+    - if [ ${PHPDEPLOYMENT} -ne 0 ]; then kubectl delete deployment ${kube_php_deployment}; fi
+    - export PHPSERVICE=$(kubectl get services |grep ${kube_php_service} | wc -l)
+    - if [ ${PHPSERVICE} -ne 0 ]; then kubectl delete services ${kube_php_service}; fi
+    - export PHPINGRESS=$(kubectl get ingresses |grep ${kube_php_ingress} | wc -l)
+    - if [ ${PHPINGRESS} -ne 0 ]; then kubectl delete ingress ${kube_php_ingress}; fi
+    - kubectl apply -f files/phpDeployment.yaml
+    - kubectl apply -f files/phpService.yaml
+    - kubectl apply -f files/php-apache-ing.yaml
+
+    - echo "delete old deployment and service for redis"
+    - export REDISDEPLOYMENT=$(kubectl get deployments |grep ${kube_redis_deployment} | wc -l)
+    - if [ ${REDISDEPLOYMENT} -ne 0 ]; then kubectl delete deployment ${kube_redis_deployment}; fi
+    - export REDISSERVICE=$(kubectl get services |grep ${kube_redis_service} | wc -l)
+    - kubectl apply -f files/redisDeployment.yaml
+    - kubectl apply -f files/redisService.yaml
+
+    - kubectl get deployments
+    - kubectl get pods 
+    - kubectl get services 
+    - kubectl get ing

@@ -1,0 +1,47 @@
+vi /etc/resolv.conf
+
+Copy config file from Gang;
+
+kubectl config set-context --current --namespace=kubecicd
+
+kubectl config set-credentials eslahi@toobatech.ir --auth-provider-arg=idp-certificate-authority-data=$(base64 -w 0 /home/gitlab-runner/kubecicd/openid-ca.pem)
+
+
+
+*********************Build Project************************
+docker build -t php-apache-gke-pvctst:latest -f Dockerfile-php .
+
+docker tag php-apache-gke-pvctst:latest 192.168.100.81:8082/php-apache-gke-pvctst:latest
+
+docker push 192.168.100.81:8082/php-apache-gke-pvctst:latest
+
+
+docker build -t redis-local:latest -f Dockerfile-redis .
+
+docker tag redis-local:latest 192.168.100.81:8082/redis-local:latest    
+
+docker push 192.168.100.81:8082/redis-local:latest
+
+*********************Deploy Project************************
+kubectl create configmap redishost-pvctst --from-literal=REDIS_HOST=redis-pvctst --from-literal=REDIS_PORT=6379 -n sample
+
+kubectl apply -f files/redisPVC.yaml -n sample
+
+kubectl apply -f files/redisDeployment.yaml -n sample
+
+kubectl apply -f files/redisService.yaml -n sample
+
+kubectl apply -f files/phpPVC.yaml -n sample
+
+kubectl apply -f files/phpDeployment.yaml -n sample
+
+kubectl apply -f files/phpService.yaml -n sample
+
+kubectl apply -f files/php-apache-ing.yaml -n sample
+
+
+
+
+
+
+

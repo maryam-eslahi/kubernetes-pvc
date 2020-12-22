@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: php-apache-ingress-pvc
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  backend:
+    serviceName: default-http-backend
+    servicePort: 80
+  rules:
+  - host: php-redis-pvctst.toomix.ir
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: php-apache-pvctst
+          servicePort: 80
+

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache-pvctst
+  labels:
+    app: php-apache-pvctst
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: php-apache-pvctst
+  template:
+    metadata:
+      labels:
+        app: php-apache-pvctst
+    spec:
+      containers:
+        - name: php-apache-pvctst
+          # this is for minikube only, for gke you have to push the docker image to any container registry
+          # then use that image like
+          image: 192.168.100.81:8083/php-apache-gke-pvctst:latest
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/root/start.sh"]
+         # command: ["/root/start.sh"]
+          # only for minikube, for gke remove this line or set any desired policy
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+              ephemeral-storage: "400Mi"
+          # Environment variables from configMap, before using this create your config map using
+          # kubectl create configmap redishost --from-literal=REDIS_HOST=redis --from-literal=REDIS_PORT=6379
+          # for using Cloud memorystore change the REDIS_HOST value to your instance ip
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redishost-pvctst
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: redishost-pvctst
+                  key: REDIS_PORT
+          volumeMounts:
+          - mountPath: /var/www/html
+            name: php-data
+      volumes:
+      - name: php-data
+        persistentVolumeClaim:
+          claimName: php-pvctst1

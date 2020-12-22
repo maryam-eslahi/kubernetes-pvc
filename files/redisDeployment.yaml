@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-pvctst
+  labels:
+    app: redis-pvctst
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-pvctst
+  template:
+    metadata:
+      labels:
+        app: redis-pvctst
+    spec:
+      containers:
+        - name: redis-pvctst
+          # this is for minikube only, for gke you have to push the docker image to any container registry
+          # then use that image like
+          # image: docker.io/username/imagename
+          image: 192.168.100.81:8083/redis-local:latest
+          # only for minikube, for gke remove this line or set any desired policy
+          imagePullPolicy: Always
+          ports:
+             - containerPort: 6379
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "200m"
+              ephemeral-storage: "400Mi"
+          volumeMounts:
+          - mountPath: /data
+            name: redis-data
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvctst
+
